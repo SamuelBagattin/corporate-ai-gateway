@@ -1,6 +1,9 @@
 image:
   repository: vllm/vllm-openai-cpu
-  tag: v0.32.0-arm64
+  # v0.31.0/v0.32.0 crash on the first request on CPU without Triton
+  # (compute_slot_mapping fallback, fixed by vllm-project/vllm#61992 after
+  # v0.32.0). Move up once a release includes that fix.
+  tag: v0.30.0-arm64
 
 # Scheduled on the Karpenter "inference" NodePool (Graviton3+).
 nodeSelector:
@@ -26,7 +29,7 @@ models:
       - --dtype=bfloat16
       - --max-model-len=4096
       # No torch.compile: on arm64 the Inductor C++ build hits a gcc internal
-      # compiler error (segfault) during warm-up (vLLM v0.32.0).
+      # compiler error (segfault) during warm-up (seen on vLLM v0.32.0).
       - --enforce-eager
     # Sized to fill a 2 vCPU / 8 GiB node (m7g.large spot, ~0.04 USD/h; ~6.9 GiB allocatable).
     resources:
