@@ -1,0 +1,2 @@
+# Chart defaults are already small (10m / 64Mi).
+clickhouse-operator-helm: {}

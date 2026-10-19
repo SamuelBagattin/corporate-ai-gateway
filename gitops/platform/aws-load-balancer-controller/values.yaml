@@ -1,0 +1,18 @@
+aws-load-balancer-controller:
+  # clusterName / region / vpcId injected by gitops/bootstrap.
+  replicaCount: 1
+  serviceAccount:
+    # Must match the Pod Identity association in terraform/pod_identity.tf.
+    name: aws-load-balancer-controller
+  # The Service mutating webhook blocks every Service create/update cluster-wide
+  # while the controller is down; we only use Ingress, so turn it off.
+  enableServiceMutatorWebhook: false
+  # Otherwise the chart generates the webhook certificate at render time, and
+  # ArgoCD (helm template) rotates it on every sync.
+  enableCertManager: true
+  resources:
+    requests:
+      cpu: 25m
+      memory: 96Mi
+    limits:
+      memory: 256Mi

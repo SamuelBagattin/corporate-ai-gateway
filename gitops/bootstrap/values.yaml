@@ -1,0 +1,150 @@
+# Injected by Terraform (terraform/argocd.tf, local.gitops_global) and passed
+# to every child chart as `.Values.global`. Never commit account values here.
+global:
+  repoURL: ""
+  targetRevision: main
+  clusterName: ""
+  region: ""
+  accountId: ""
+  vpcId: ""
+  domain: ""
+  certificateArn: ""
+  ingressAllowedCidrs: 0.0.0.0/0
+  secretsPrefix: ""
+  karpenter:
+    nodeRoleName: ""
+    interruptionQueue: ""
+  langfuse:
+    bucket: ""
+
+# All ingresses join one shared ALB (group "ai-gateway"). LB-level annotations
+# must be identical on every ingress of the group.
+albAnnotations: |
+  alb.ingress.kubernetes.io/scheme: internet-facing
+  alb.ingress.kubernetes.io/group.name: ai-gateway
+  alb.ingress.kubernetes.io/target-type: ip
+  alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+  alb.ingress.kubernetes.io/ssl-redirect: "443"
+  alb.ingress.kubernetes.io/certificate-arn: {{ .Values.global.certificateArn }}
+  alb.ingress.kubernetes.io/inbound-cidrs: {{ .Values.global.ingressAllowedCidrs }}
+
+# Each entry becomes an Application. `values` is templated (tpl) against this
+# chart, so it can use .Values.global.* and .Values.albAnnotations. Indentation
+# inside `values` is relative to the block, not to this file.
+# Waves: ArgoCD -> Karpenter (nodes) -> platform controllers -> operators -> workloads.
+applications:
+  - name: argocd
+    namespace: argocd
+    path: gitops/platform/argocd
+    wave: -10
+    # Self-managed: never let a deletion cascade into ArgoCD's own resources.
+    finalizer: false
+    values: |
+      argo-cd:
+        global:
+          domain: argocd.{{ .Values.global.domain }}
+        server:
+          ingress:
+            enabled: true
+            annotations:
+              {{- tpl .Values.albAnnotations . | nindent 8 }}
+              alb.ingress.kubernetes.io/backend-protocol: HTTPS
+
+  - name: karpenter
+    namespace: kube-system
+    path: gitops/platform/karpenter
+    wave: -8
+    values: |
+      karpenter:
+        settings:
+          clusterName: {{ .Values.global.clusterName }}
+          interruptionQueue: {{ .Values.global.karpenter.interruptionQueue }}
+
+  - name: cluster-config
+    namespace: kube-system
+    path: gitops/platform/cluster-config
+    wave: -6
+
+  - name: aws-load-balancer-controller
+    namespace: kube-system
+    path: gitops/platform/aws-load-balancer-controller
+    wave: -4 # webhook certificate issued by cert-manager
+    values: |
+      aws-load-balancer-controller:
+        clusterName: {{ .Values.global.clusterName }}
+        region: {{ .Values.global.region }}
+        vpcId: {{ .Values.global.vpcId }}
+
+  - name: external-dns
+    namespace: external-dns
+    path: gitops/platform/external-dns
+    wave: -6
+    values: |
+      external-dns:
+        domainFilters:
+          - {{ .Values.global.domain }}
+        txtOwnerId: {{ .Values.global.clusterName }}
+        env:
+          - name: AWS_DEFAULT_REGION
+            value: {{ .Values.global.region }}
+
+  - name: external-secrets
+    namespace: external-secrets
+    path: gitops/platform/external-secrets
+    wave: -6
+
+  - name: cert-manager
+    namespace: cert-manager
+    path: gitops/platform/cert-manager
+    wave: -6
+
+  - name: cloudnative-pg
+    namespace: cnpg-system
+    path: gitops/platform/cloudnative-pg
+    wave: -6
+
+  - name: clickhouse-operator
+    namespace: clickhouse-operator
+    path: gitops/platform/clickhouse-operator
+    wave: -4
+
+  - name: vllm
+    namespace: vllm
+    path: gitops/apps/vllm
+    wave: 0
+
+  - name: langfuse
+    namespace: langfuse
+    path: gitops/apps/langfuse
+    wave: 0
+    values: |
+      langfuse:
+        langfuse:
+          nextauth:
+            url: https://langfuse.{{ .Values.global.domain }}
+          ingress:
+            hosts:
+              - host: langfuse.{{ .Values.global.domain }}
+                paths:
+                  - path: /
+                    pathType: Prefix
+            annotations:
+              {{- tpl .Values.albAnnotations . | nindent 8 }}
+        s3:
+          bucket: {{ .Values.global.langfuse.bucket }}
+          region: {{ .Values.global.region }}
+
+  - name: litellm
+    namespace: litellm
+    path: gitops/apps/litellm
+    wave: 1
+    values: |
+      litellm-helm:
+        ingress:
+          hosts:
+            - host: litellm.{{ .Values.global.domain }}
+              paths:
+                - path: /
+                  pathType: Prefix
+          annotations:
+            {{- tpl .Values.albAnnotations . | nindent 6 }}

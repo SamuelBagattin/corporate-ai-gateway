@@ -1,0 +1,5 @@
+apiVersion: v2
+name: bootstrap
+description: App-of-apps. Renders one ArgoCD Application per platform component and workload.
+type: application
+version: 0.1.0

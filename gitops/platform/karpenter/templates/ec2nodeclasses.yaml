@@ -1,0 +1,33 @@
+{{- range $name, $volumeSize := dict "default" "30Gi" "inference" "80Gi" }}
+---
+apiVersion: karpenter.k8s.aws/v1
+kind: EC2NodeClass
+metadata:
+  name: {{ $name }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  role: {{ $.Values.global.karpenter.nodeRoleName }}
+  amiSelectorTerms:
+    - alias: al2023@latest
+  subnetSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: {{ $.Values.global.clusterName }}
+  securityGroupSelectorTerms:
+    - tags:
+        karpenter.sh/discovery: {{ $.Values.global.clusterName }}
+  blockDeviceMappings:
+    - deviceName: /dev/xvda
+      ebs:
+        # inference: the vLLM CPU image and model weights land on the root volume.
+        volumeSize: {{ $volumeSize }}
+        volumeType: gp3
+        encrypted: true
+  metadataOptions:
+    httpEndpoint: enabled
+    httpProtocolIPv6: disabled
+    httpPutResponseHopLimit: 1
+    httpTokens: required
+  tags:
+    Name: karpenter-{{ $.Values.global.clusterName }}-{{ $name }}
+{{- end }}

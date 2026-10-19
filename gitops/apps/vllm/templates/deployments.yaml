@@ -1,0 +1,85 @@
+{{- range .Values.models }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .name }}
+  labels:
+    app.kubernetes.io/name: vllm
+    app.kubernetes.io/instance: {{ .name }}
+spec:
+  replicas: {{ .replicas | default 1 }}
+  # Never run two copies during a rollout: each one needs a whole node.
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vllm
+      app.kubernetes.io/instance: {{ .name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: vllm
+        app.kubernetes.io/instance: {{ .name }}
+    spec:
+      {{- with $.Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $.Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: vllm
+          image: "{{ $.Values.image.repository }}:{{ $.Values.image.tag }}"
+          args:
+            - {{ .model | quote }}
+            - --served-model-name={{ .servedModelName | default .name }}
+            - --host=0.0.0.0
+            - --port=8000
+            {{- range .args }}
+            - {{ . | quote }}
+            {{- end }}
+          env:
+            - name: VLLM_CPU_KVCACHE_SPACE
+              value: {{ .kvCacheGiB | default 1 | quote }}
+            # Leave one core to the API server process (vLLM CPU recommendation).
+            - name: VLLM_CPU_NUM_OF_RESERVED_CPU
+              value: "1"
+          ports:
+            - name: http
+              containerPort: 8000
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            # Image pull + weights download + warmup can take several minutes.
+            periodSeconds: 10
+            failureThreshold: 90
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 30
+            failureThreshold: 3
+          resources:
+            {{- toYaml .resources | nindent 12 }}
+          volumeMounts:
+            - name: hf-cache
+              mountPath: /root/.cache/huggingface
+            - name: shm
+              mountPath: /dev/shm
+      volumes:
+        - name: hf-cache
+          emptyDir: {}
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 1Gi
+{{- end }}

@@ -1,0 +1,9 @@
+apiVersion: v2
+name: clickhouse-operator
+description: Reconciles the ClickHouseCluster / KeeperCluster CRs rendered by the Langfuse chart.
+type: application
+version: 0.1.0
+dependencies:
+  - name: clickhouse-operator-helm
+    version: 0.0.8
+    repository: oci://ghcr.io/clickhouse

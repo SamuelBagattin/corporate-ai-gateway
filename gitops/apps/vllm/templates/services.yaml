@@ -1,0 +1,18 @@
+{{- range .Values.models }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .name }}
+  labels:
+    app.kubernetes.io/name: vllm
+    app.kubernetes.io/instance: {{ .name }}
+spec:
+  selector:
+    app.kubernetes.io/name: vllm
+    app.kubernetes.io/instance: {{ .name }}
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+{{- end }}

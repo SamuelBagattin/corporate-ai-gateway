@@ -1,0 +1,50 @@
+{{- range $app := .Values.applications }}
+{{- if ne $app.enabled false }}
+{{- $values := dict }}
+{{- with $app.values }}
+{{- $values = tpl . $ | fromYaml }}
+{{- if hasKey $values "Error" }}
+{{- fail (printf "applications[%s].values is not valid YAML once templated: %s" $app.name $values.Error) }}
+{{- end }}
+{{- end }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $app.name }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $app.wave | default 0 | quote }}
+  {{- if ne $app.finalizer false }}
+  # Removing the entry from values.yaml deletes the app's resources too.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+  {{- end }}
+spec:
+  project: default
+  source:
+    repoURL: {{ $.Values.global.repoURL }}
+    targetRevision: {{ $.Values.global.targetRevision }}
+    path: {{ $app.path }}
+    helm:
+      releaseName: {{ $app.name }}
+      valuesObject:
+        {{- toYaml (merge $values (dict "global" $.Values.global)) | nindent 8 }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ $app.namespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+    retry:
+      limit: 10
+      backoff:
+        duration: 15s
+        factor: 2
+        maxDuration: 5m
+{{- end }}
+{{- end }}

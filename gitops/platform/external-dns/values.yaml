@@ -1,0 +1,18 @@
+external-dns:
+  # domainFilters / txtOwnerId / AWS region injected by gitops/bootstrap.
+  provider:
+    name: aws
+  sources:
+    - ingress
+  policy: sync
+  extraArgs:
+    - --aws-zone-type=public
+  serviceAccount:
+    # Must match the Pod Identity association in terraform/pod_identity.tf.
+    name: external-dns
+  resources:
+    requests:
+      cpu: 10m
+      memory: 48Mi
+    limits:
+      memory: 128Mi

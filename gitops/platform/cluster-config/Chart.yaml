@@ -1,0 +1,5 @@
+apiVersion: v2
+name: cluster-config
+description: Cluster-wide resources that belong to no controller (default StorageClass).
+type: application
+version: 0.1.0

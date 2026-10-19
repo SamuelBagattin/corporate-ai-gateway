@@ -1,0 +1,12 @@
+.DS_Store
+.idea/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+
+# Helm dependencies (ArgoCD runs `helm dependency build` from Chart.lock)
+gitops/**/charts/*.tgz

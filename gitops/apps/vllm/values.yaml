@@ -1,0 +1,32 @@
+image:
+  repository: vllm/vllm-openai-cpu
+  tag: v0.32.0-x86_64
+
+# Scheduled on the Karpenter "inference" NodePool (x86, AVX-512).
+nodeSelector:
+  workload: inference
+tolerations:
+  - key: workload
+    operator: Equal
+    value: inference
+    effect: NoSchedule
+
+# Each model is reachable in-cluster at http://<name>.vllm.svc:8000/v1 and is
+# registered in LiteLLM (gitops/apps/litellm/values.yaml).
+models:
+  - name: qwen3-0-6b
+    model: Qwen/Qwen3-0.6B
+    servedModelName: qwen3-0.6b
+    replicas: 1
+    # KV cache size in GiB (VLLM_CPU_KVCACHE_SPACE).
+    kvCacheGiB: 2
+    args:
+      - --dtype=bfloat16
+      - --max-model-len=8192
+    # Sized to fit a 2 vCPU / 8 GiB node (e.g. m7i-flex.large spot).
+    resources:
+      requests:
+        cpu: 1500m
+        memory: 5Gi
+      limits:
+        memory: 6Gi

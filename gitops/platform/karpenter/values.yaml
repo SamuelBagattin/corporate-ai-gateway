@@ -1,0 +1,28 @@
+karpenter:
+  # POC: one controller replica on the system node group (tolerates
+  # CriticalAddonsOnly by default).
+  replicas: 1
+  nodeSelector:
+    karpenter.sh/controller: "true"
+  serviceAccount:
+    # Must match the Pod Identity association created by terraform/karpenter.tf.
+    name: karpenter
+  controller:
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        memory: 512Mi
+  settings:
+    # clusterName / interruptionQueue injected by gitops/bootstrap.
+    featureGates:
+      spotToSpotConsolidation: true
+
+nodePools:
+  # Everything except model serving: ARM64 (Graviton), spot first.
+  general:
+    cpuLimit: 16
+  # vLLM CPU inference: x86 with AVX-512 (Intel Sapphire Rapids+ / AMD Genoa+).
+  inference:
+    cpuLimit: 16

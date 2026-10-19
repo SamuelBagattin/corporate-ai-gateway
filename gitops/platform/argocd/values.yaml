@@ -1,0 +1,102 @@
+# Single-cluster, single-replica ArgoCD sized for a POC.
+# Installed once by Terraform (terraform/argocd.tf), then self-managed.
+# Ingress hostname/annotations are injected by gitops/bootstrap.
+argo-cd:
+  global:
+    logging:
+      format: json
+      level: warn
+    # Runs on the system node group so it survives a broken Karpenter.
+    nodeSelector:
+      karpenter.sh/controller: "true"
+    tolerations:
+      - key: CriticalAddonsOnly
+        operator: Exists
+
+  dex:
+    enabled: false
+
+  notifications:
+    enabled: false
+
+  redis:
+    resources:
+      requests:
+        cpu: 25m
+        memory: 32Mi
+      limits:
+        memory: 128Mi
+
+  redisSecretInit:
+    resources:
+      requests:
+        cpu: 10m
+        memory: 32Mi
+      limits:
+        memory: 64Mi
+
+  controller:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 384Mi
+      limits:
+        memory: 768Mi
+
+  repoServer:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        memory: 512Mi
+
+  applicationSet:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 10m
+        memory: 48Mi
+      limits:
+        memory: 128Mi
+
+  server:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 25m
+        memory: 96Mi
+      limits:
+        memory: 256Mi
+    # Enabled with ALB annotations by gitops/bootstrap (not at Terraform install,
+    # when no ingress controller exists yet).
+    ingress:
+      enabled: false
+      controller: aws
+      ingressClassName: alb
+      aws:
+        backendProtocolVersion: GRPC
+        serviceType: ClusterIP
+
+  configs:
+    cm:
+      # POC: local admin account, password in secret argocd-initial-admin-secret.
+      admin.enabled: "true"
+      exec.enabled: "false"
+      # Restore Application health so sync waves in gitops/bootstrap wait for
+      # each child app (removed from ArgoCD defaults in v1.8).
+      resource.customizations.health.argoproj.io_Application: |
+        hs = {}
+        hs.status = "Progressing"
+        hs.message = ""
+        if obj.status ~= nil then
+          if obj.status.health ~= nil then
+            hs.status = obj.status.health.status
+            if obj.status.health.message ~= nil then
+              hs.message = obj.status.health.message
+            end
+          end
+        end
+        return hs

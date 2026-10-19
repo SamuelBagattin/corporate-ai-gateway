@@ -1,0 +1,150 @@
+secretsManagerKey: langfuse # -> <global.secretsPrefix>/langfuse (terraform/secrets.tf)
+
+database:
+  instances: 1
+  storageSize: 5Gi
+
+# Every credential is passed by secretKeyRef: the chart would otherwise
+# generate them with `lookup`, which ArgoCD cannot run (new values each sync).
+langfuse:
+  langfuse:
+    logging:
+      format: json
+    salt:
+      secretKeyRef:
+        name: langfuse-secrets
+        key: salt
+    encryptionKey:
+      secretKeyRef:
+        name: langfuse-secrets
+        key: encryption-key
+    nextauth:
+      # url injected by gitops/bootstrap.
+      secret:
+        secretKeyRef:
+          name: langfuse-secrets
+          key: nextauth-secret
+    features:
+      telemetryEnabled: false
+      signUpDisabled: true
+    serviceAccount:
+      create: true
+      # Must match the Pod Identity association (S3 access) in terraform/pod_identity.tf.
+      name: langfuse
+    # Headless init: creates the org, project, API keys and admin user on first
+    # start, so LiteLLM can send traces without any manual step.
+    additionalEnv:
+      - name: LANGFUSE_INIT_ORG_ID
+        value: ai-gateway
+      - name: LANGFUSE_INIT_ORG_NAME
+        value: AI Gateway
+      - name: LANGFUSE_INIT_PROJECT_ID
+        value: litellm
+      - name: LANGFUSE_INIT_PROJECT_NAME
+        value: LiteLLM
+      - name: LANGFUSE_INIT_PROJECT_PUBLIC_KEY
+        valueFrom:
+          secretKeyRef:
+            name: langfuse-secrets
+            key: init-project-public-key
+      - name: LANGFUSE_INIT_PROJECT_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            name: langfuse-secrets
+            key: init-project-secret-key
+      - name: LANGFUSE_INIT_USER_NAME
+        value: admin
+      - name: LANGFUSE_INIT_USER_EMAIL
+        valueFrom:
+          secretKeyRef:
+            name: langfuse-secrets
+            key: init-user-email
+      - name: LANGFUSE_INIT_USER_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: langfuse-secrets
+            key: init-user-password
+    ingress:
+      # hosts / ALB annotations injected by gitops/bootstrap.
+      enabled: true
+      className: alb
+    web:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          memory: 1Gi
+    worker:
+      resources:
+        requests:
+          cpu: 100m
+          memory: 512Mi
+        limits:
+          memory: 1Gi
+
+  postgresql:
+    deploy: false
+    # CloudNativePG Cluster "langfuse-db" (templates/database.yaml).
+    host: langfuse-db-rw
+    auth:
+      username: langfuse
+      database: langfuse
+      existingSecret: langfuse-db-app
+      secretKeys:
+        userPasswordKey: password
+
+  redis:
+    deploy: true
+    auth:
+      existingSecret: langfuse-redis-auth
+      existingSecretPasswordKey: default
+      usersExistingSecret: langfuse-redis-auth
+    dataStorage:
+      requestedSize: 2Gi
+    resources:
+      requests:
+        cpu: 25m
+        memory: 64Mi
+      limits:
+        memory: 256Mi
+
+  clickhouse:
+    deploy: true
+    # CRDs come from the clickhouse-operator Application (earlier sync wave).
+    crdCheck: false
+    auth:
+      existingSecret: langfuse-secrets
+      existingSecretKey: clickhouse-password
+    cluster:
+      replicas: 1
+      storage:
+        size: 20Gi
+      resources:
+        requests:
+          cpu: 250m
+          memory: 1536Mi
+        limits:
+          memory: 3Gi
+      logger:
+        level: warning
+    keeper:
+      # POC: single Keeper. Use 3 for HA.
+      replicas: 1
+      storage:
+        size: 2Gi
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          memory: 512Mi
+      logger:
+        level: warning
+
+  s3:
+    # AWS S3 through Pod Identity: no access keys, SDK default credential chain.
+    # bucket / region injected by gitops/bootstrap.
+    deploy: false
+    storageProvider: s3
+    forcePathStyle: false

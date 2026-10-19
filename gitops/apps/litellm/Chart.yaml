@@ -1,0 +1,9 @@
+apiVersion: v2
+name: litellm
+description: LiteLLM proxy (OpenAI-compatible gateway) + its Postgres (CloudNativePG) and secrets (External Secrets).
+type: application
+version: 0.1.0
+dependencies:
+  - name: litellm-helm
+    version: 1.106.0
+    repository: oci://ghcr.io/berriai

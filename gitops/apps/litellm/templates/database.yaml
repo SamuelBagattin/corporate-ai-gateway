@@ -1,0 +1,22 @@
+# CNPG generates the "litellm" role password and writes host/user/password
+# to the Secret "litellm-db-app".
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: litellm-db
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  instances: {{ .Values.database.instances }}
+  storage:
+    size: {{ .Values.database.storageSize }}
+  bootstrap:
+    initdb:
+      database: litellm
+      owner: litellm
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 512Mi

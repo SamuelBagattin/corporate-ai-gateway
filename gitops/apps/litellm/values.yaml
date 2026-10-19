@@ -1,0 +1,60 @@
+secretsManagerKey: litellm # -> <global.secretsPrefix>/litellm (terraform/secrets.tf)
+
+database:
+  instances: 1
+  storageSize: 5Gi
+
+litellm-helm:
+  replicaCount: 1
+
+  # Secret synced from Secrets Manager (templates/external-secret.yaml).
+  # Setting it also stops the chart from generating a master key itself.
+  masterkeySecretName: litellm-secrets
+  masterkeySecretKey: PROXY_MASTER_KEY
+  # Exposes LITELLM_SALT_KEY and LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY.
+  environmentSecrets:
+    - litellm-secrets
+
+  envVars:
+    LANGFUSE_OTEL_HOST: http://langfuse-web.langfuse.svc.cluster.local:3000
+
+  db:
+    useExisting: true
+    deployStandalone: false
+    # CloudNativePG Cluster "litellm-db" (templates/database.yaml).
+    endpoint: litellm-db-rw
+    database: litellm
+    secret:
+      name: litellm-db-app
+      usernameKey: username
+      passwordKey: password
+
+  # The chart runs migrations as an ArgoCD PreSync hook, i.e. before the
+  # database above exists on first sync. The proxy migrates at startup instead.
+  migrationJob:
+    enabled: false
+
+  proxy_config:
+    model_list:
+      # Self-hosted models served by gitops/apps/vllm.
+      - model_name: qwen3-0.6b
+        litellm_params:
+          model: hosted_vllm/qwen3-0.6b
+          api_base: http://qwen3-0-6b.vllm.svc.cluster.local:8000/v1
+    litellm_settings:
+      callbacks: ["langfuse_otel"]
+      drop_params: true
+    general_settings:
+      master_key: os.environ/PROXY_MASTER_KEY
+
+  ingress:
+    # hosts / ALB annotations injected by gitops/bootstrap.
+    enabled: true
+    className: alb
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 768Mi
+    limits:
+      memory: 1536Mi

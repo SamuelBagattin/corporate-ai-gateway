@@ -1,0 +1,84 @@
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: general
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  limits:
+    cpu: {{ .Values.nodePools.general.cpuLimit | quote }}
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 1m
+  template:
+    spec:
+      expireAfter: 720h
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: default
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["arm64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["c", "m", "r", "t"]
+        - key: karpenter.k8s.aws/instance-size
+          operator: NotIn
+          values: ["nano", "micro", "small"]
+        - key: karpenter.k8s.aws/instance-family
+          operator: NotIn
+          values: ["a1"]
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: inference
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  limits:
+    cpu: {{ .Values.nodePools.inference.cpuLimit | quote }}
+  disruption:
+    # Model pods are slow to start (image pull + weights download): only
+    # reclaim nodes once they are empty.
+    consolidationPolicy: WhenEmpty
+    consolidateAfter: 5m
+  template:
+    metadata:
+      labels:
+        workload: inference
+    spec:
+      expireAfter: 720h
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: inference
+      taints:
+        - key: workload
+          value: inference
+          effect: NoSchedule
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["spot", "on-demand"]
+        - key: karpenter.k8s.aws/instance-category
+          operator: In
+          values: ["c", "m", "r"]
+        # Generation 7+: Sapphire Rapids (AVX-512 + AMX) / Genoa (AVX-512).
+        - key: karpenter.k8s.aws/instance-generation
+          operator: Gt
+          values: ["6"]
