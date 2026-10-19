@@ -34,6 +34,10 @@ langfuse:
     # Headless init: creates the org, project, API keys and admin user on first
     # start, so LiteLLM can send traces without any manual step.
     additionalEnv:
+      # Node caps the V8 heap at ~50% of the container limit by default;
+      # the web app needs > 500 MB at startup.
+      - name: NODE_OPTIONS
+        value: --max-old-space-size=1536
       - name: LANGFUSE_INIT_ORG_ID
         value: ai-gateway
       - name: LANGFUSE_INIT_ORG_NAME
@@ -72,16 +76,16 @@ langfuse:
       resources:
         requests:
           cpu: 50m
-          memory: 512Mi
-        limits:
           memory: 1Gi
+        limits:
+          memory: 2Gi
     worker:
       resources:
         requests:
           cpu: 50m
-          memory: 512Mi
-        limits:
           memory: 1Gi
+        limits:
+          memory: 2Gi
 
   postgresql:
     deploy: false
