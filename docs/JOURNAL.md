@@ -2,6 +2,13 @@
 
 Append-only log. Newest entries on top. Cap ~80 entries; archive older ones to `docs/journal-archive/YYYY-QN.md`.
 
+## 2026-10-20 — First deploy: stack up, LiteLLM → vLLM works, Langfuse traces missing
+- **Did:** `terraform apply` (135 resources); all 13 ArgoCD apps Synced/Healthy. Chat completion through `https://litellm.ai-gateway.samuelbagattin.com` answered by vLLM. Cluster put to sleep overnight (`scripts/sleep.sh`).
+- **Did:** Fixes pushed to main: vLLM `--enforce-eager` (Inductor gcc segfault on arm64), KV cache 1 GiB + memory 6Gi/6912Mi, pinned vLLM v0.30.0 (v0.31/v0.32 crash on first request on CPU without Triton, fixed upstream by vllm#61992); Langfuse web/worker 2Gi + `NODE_OPTIONS=--max-old-space-size=1536`; ArgoCD ingress hostname set explicitly.
+- **Decisions:** none architectural.
+- **Open:** No traces in Langfuse although LiteLLM's LangfuseOtelLogger is active. Delegation `ai-gateway` NS records were added manually in Cloudflare (the real DNS for samuelbagattin.com): not in Terraform, and they change on every destroy/create. The Route53 parent-zone NS record is useless and should be removed.
+- **Lessons:** Check where a domain's DNS is actually served before delegating. Helm parent `global.*` overrides a subchart's `global.*`.
+
 ## 2026-10-19 — Cost cuts + sleep/wake/destroy/create scripts (not applied)
 - **Did:** Published the repo (public, github.com/SamuelBagattin/corporate-ai-gateway).
 - **Did:** Cut always-on cost from ~260 to ~183 USD/month: fck-nat instead of NAT gateway, S3 gateway endpoint, one r7g.large system node for everything but vLLM (prefix delegation, maxPods 110), vLLM on Graviton, smaller disks, no KMS key.
