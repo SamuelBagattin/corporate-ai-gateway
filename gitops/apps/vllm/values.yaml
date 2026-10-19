@@ -23,6 +23,9 @@ models:
     args:
       - --dtype=bfloat16
       - --max-model-len=8192
+      # No torch.compile: on arm64 the Inductor C++ build hits a gcc internal
+      # compiler error (segfault) during warm-up (vLLM v0.32.0).
+      - --enforce-eager
     # Sized to fit a 2 vCPU / 8 GiB node (m7g.large spot, ~0.04 USD/h).
     resources:
       requests:
