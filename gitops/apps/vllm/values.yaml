@@ -18,8 +18,9 @@ models:
     model: Qwen/Qwen3-0.6B
     servedModelName: qwen3-0.6b
     replicas: 1
-    # KV cache size in GiB (VLLM_CPU_KVCACHE_SPACE). The vLLM process itself
-    # takes ~4.3 GiB of the 6 GiB limit; 1 GiB holds ~9k tokens for this model.
+    # KV cache size in GiB (VLLM_CPU_KVCACHE_SPACE); 1 GiB holds ~9k tokens for
+    # this model. vLLM checks it against the cgroup limit minus current usage,
+    # which includes ~4.3 GiB of process memory and the page cache of the weights.
     kvCacheGiB: 1
     args:
       - --dtype=bfloat16
@@ -27,10 +28,10 @@ models:
       # No torch.compile: on arm64 the Inductor C++ build hits a gcc internal
       # compiler error (segfault) during warm-up (vLLM v0.32.0).
       - --enforce-eager
-    # Sized to fit a 2 vCPU / 8 GiB node (m7g.large spot, ~0.04 USD/h).
+    # Sized to fill a 2 vCPU / 8 GiB node (m7g.large spot, ~0.04 USD/h; ~6.9 GiB allocatable).
     resources:
       requests:
         cpu: 1500m
-        memory: 5Gi
-      limits:
         memory: 6Gi
+      limits:
+        memory: 6912Mi
