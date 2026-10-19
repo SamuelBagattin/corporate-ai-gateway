@@ -39,13 +39,17 @@ applications:
     wave: -10
     # Self-managed: never let a deletion cascade into ArgoCD's own resources.
     finalizer: false
+    # Not via argo-cd.global.domain: Helm lets the parent's global.domain
+    # (the base domain) override it.
     values: |
       argo-cd:
-        global:
-          domain: argocd.{{ .Values.global.domain }}
+        configs:
+          cm:
+            url: https://argocd.{{ .Values.global.domain }}
         server:
           ingress:
             enabled: true
+            hostname: argocd.{{ .Values.global.domain }}
             annotations:
               {{- tpl .Values.albAnnotations . | nindent 8 }}
               alb.ingress.kubernetes.io/backend-protocol: HTTPS
