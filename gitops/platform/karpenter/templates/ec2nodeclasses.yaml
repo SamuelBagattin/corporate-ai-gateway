@@ -1,4 +1,4 @@
-{{- range $name, $volumeSize := dict "default" "30Gi" "inference" "80Gi" }}
+{{- range $name, $volumeSize := dict "default" "20Gi" "inference" "40Gi" }}
 ---
 apiVersion: karpenter.k8s.aws/v1
 kind: EC2NodeClass

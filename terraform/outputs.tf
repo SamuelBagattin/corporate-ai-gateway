@@ -22,3 +22,13 @@ output "secrets_manager_secrets" {
     langfuse = aws_secretsmanager_secret.langfuse.name
   }
 }
+
+output "ops" {
+  description = "Read by scripts/*.sh."
+  value = {
+    cluster_name      = module.eks.cluster_name
+    region            = var.region
+    aws_profile       = var.aws_profile
+    system_node_group = local.system_node_group_name
+  }
+}

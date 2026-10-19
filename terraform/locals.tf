@@ -10,6 +10,9 @@ locals {
 
   domain = "${var.subdomain}.${var.parent_domain}"
 
+  # Scaled to 0/1 by scripts/sleep.sh and scripts/wake.sh.
+  system_node_group_name = "system"
+
   # Every secret this project owns lives under this Secrets Manager prefix.
   secrets_prefix = var.project_name
 

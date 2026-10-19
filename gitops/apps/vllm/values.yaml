@@ -1,8 +1,8 @@
 image:
   repository: vllm/vllm-openai-cpu
-  tag: v0.32.0-x86_64
+  tag: v0.32.0-arm64
 
-# Scheduled on the Karpenter "inference" NodePool (x86, AVX-512).
+# Scheduled on the Karpenter "inference" NodePool (Graviton3+).
 nodeSelector:
   workload: inference
 tolerations:
@@ -23,7 +23,7 @@ models:
     args:
       - --dtype=bfloat16
       - --max-model-len=8192
-    # Sized to fit a 2 vCPU / 8 GiB node (e.g. m7i-flex.large spot).
+    # Sized to fit a 2 vCPU / 8 GiB node (m7g.large spot, ~0.04 USD/h).
     resources:
       requests:
         cpu: 1500m

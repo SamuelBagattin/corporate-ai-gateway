@@ -2,7 +2,7 @@ secretsManagerKey: langfuse # -> <global.secretsPrefix>/langfuse (terraform/secr
 
 database:
   instances: 1
-  storageSize: 5Gi
+  storageSize: 2Gi
 
 # Every credential is passed by secretKeyRef: the chart would otherwise
 # generate them with `lookup`, which ArgoCD cannot run (new values each sync).
@@ -71,14 +71,14 @@ langfuse:
     web:
       resources:
         requests:
-          cpu: 100m
+          cpu: 50m
           memory: 512Mi
         limits:
           memory: 1Gi
     worker:
       resources:
         requests:
-          cpu: 100m
+          cpu: 50m
           memory: 512Mi
         limits:
           memory: 1Gi
@@ -119,10 +119,10 @@ langfuse:
     cluster:
       replicas: 1
       storage:
-        size: 20Gi
+        size: 10Gi
       resources:
         requests:
-          cpu: 250m
+          cpu: 150m
           memory: 1536Mi
         limits:
           memory: 3Gi

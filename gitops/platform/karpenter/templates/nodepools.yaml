@@ -13,6 +13,8 @@ spec:
   template:
     spec:
       expireAfter: 720h
+      # Upper bound on draining: PDBs of single-replica apps would block forever.
+      terminationGracePeriod: 10m
       nodeClassRef:
         group: karpenter.k8s.aws
         kind: EC2NodeClass
@@ -57,6 +59,8 @@ spec:
         workload: inference
     spec:
       expireAfter: 720h
+      # Upper bound on draining: PDBs of single-replica apps would block forever.
+      terminationGracePeriod: 10m
       nodeClassRef:
         group: karpenter.k8s.aws
         kind: EC2NodeClass
@@ -68,7 +72,7 @@ spec:
       requirements:
         - key: kubernetes.io/arch
           operator: In
-          values: ["amd64"]
+          values: ["arm64"]
         - key: kubernetes.io/os
           operator: In
           values: ["linux"]
@@ -78,7 +82,7 @@ spec:
         - key: karpenter.k8s.aws/instance-category
           operator: In
           values: ["c", "m", "r"]
-        # Generation 7+: Sapphire Rapids (AVX-512 + AMX) / Genoa (AVX-512).
+        # Generation 7+: Graviton3/4, which have the BF16 instructions vLLM uses.
         - key: karpenter.k8s.aws/instance-generation
           operator: Gt
           values: ["6"]

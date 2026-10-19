@@ -20,9 +20,9 @@ karpenter:
       spotToSpotConsolidation: true
 
 nodePools:
-  # Everything except model serving: ARM64 (Graviton), spot first.
+  # Overflow for workloads that don't fit on the system node: Graviton, spot first.
   general:
     cpuLimit: 16
-  # vLLM CPU inference: x86 with AVX-512 (Intel Sapphire Rapids+ / AMD Genoa+).
+  # vLLM CPU inference: Graviton3+ (BF16), tainted workload=inference.
   inference:
     cpuLimit: 16

@@ -9,9 +9,6 @@ argo-cd:
     # Runs on the system node group so it survives a broken Karpenter.
     nodeSelector:
       karpenter.sh/controller: "true"
-    tolerations:
-      - key: CriticalAddonsOnly
-        operator: Exists
 
   dex:
     enabled: false
@@ -39,7 +36,7 @@ argo-cd:
     replicas: 1
     resources:
       requests:
-        cpu: 100m
+        cpu: 50m
         memory: 384Mi
       limits:
         memory: 768Mi

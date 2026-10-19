@@ -41,9 +41,9 @@ variable "endpoint_public_access_cidrs" {
 }
 
 variable "system_node_instance_types" {
-  description = "Instance types for the managed node group hosting Karpenter, ArgoCD and CoreDNS (ARM64)."
+  description = "Instance types for the single system node (ARM64, 2 vCPU / 16 GiB: the stack is memory-bound)."
   type        = list(string)
-  default     = ["t4g.medium", "t4g.large"]
+  default     = ["r7g.large", "r8g.large", "r6g.large"]
 }
 
 variable "system_node_capacity_type" {

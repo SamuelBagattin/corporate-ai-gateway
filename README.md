@@ -16,41 +16,37 @@ Amazon Bedrock is planned as a second backend (v2).
    └─────────────┬──────────┘   │  ClickHouse (operator), S3     │
                  │              └────────────────────────────────┘
    ┌─────────────▼──────────┐
-   │ vLLM (CPU, x86 spot)   │   Karpenter NodePools: "general" (Graviton, spot) / "inference" (x86 AVX-512, spot)
-   └────────────────────────┘   System managed node group: Karpenter, ArgoCD, CoreDNS
+   │ vLLM (CPU, Graviton)   │   Karpenter NodePool "inference" (Graviton3+, spot)
+   └────────────────────────┘   One system node (r7g.large spot) runs everything else
 ```
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `terraform/` | VPC, EKS, Karpenter IAM, Pod Identity roles, Route53 sub-zone + ACM, Langfuse S3 bucket, Secrets Manager secrets, ArgoCD bootstrap |
+| `terraform/` | VPC (fck-nat, S3 endpoint), EKS, Karpenter IAM, Pod Identity roles, Route53 sub-zone + ACM, Langfuse S3 bucket, Secrets Manager secrets, ArgoCD bootstrap |
 | `gitops/bootstrap/` | App-of-apps: one ArgoCD Application per component, fed with Terraform outputs |
 | `gitops/platform/` | Cluster add-ons: argocd, karpenter, cluster-config, aws-load-balancer-controller, external-dns, external-secrets, cert-manager, cloudnative-pg, clickhouse-operator |
 | `gitops/apps/` | Workloads: vllm, litellm, langfuse |
-| `scripts/teardown.sh` | Clean teardown (removes controller-created ALB / EBS / EC2 first) |
+| `scripts/` | `create.sh`, `sleep.sh`, `wake.sh`, `destroy.sh` |
 
-## Deploy
+## Prerequisites
 
-Prerequisites: Terraform ≥ 1.12, Helm ≥ 3.17, AWS CLI v2, kubectl, an existing public
-Route53 zone in the account, and this repository pushed to the URL in
-`terraform/terraform.tfvars` (`gitops_repo_url`) — ArgoCD syncs from it.
+Terraform ≥ 1.12, Helm ≥ 3.17, AWS CLI v2, kubectl, jq, an existing public Route53
+zone in the account, and this repository pushed to the URL in
+`terraform/terraform.tfvars` (`gitops_repo_url`): ArgoCD syncs from it.
 
-```bash
-cd terraform
-terraform init -backend-config=backend_vars/s3.tfvars
-terraform plan -out=tf.plan
-terraform apply tf.plan
-```
+## Operating it
 
-Then:
+| Command | When | What it does | Takes |
+|---|---|---|---|
+| `scripts/create.sh` | First deploy, or after `destroy.sh` | `terraform apply`; ArgoCD then deploys everything from Git | ~30 min |
+| `scripts/sleep.sh` | End of a work session | Scales all nodes to 0. Keeps the control plane, ALB, DNS and data (EBS) | ~5 min |
+| `scripts/wake.sh` | Start of a work session | Starts the system node; ArgoCD restores Karpenter, which starts the vLLM node | ~10 min |
+| `scripts/destroy.sh` | Long break | Deletes controller-created AWS resources (ALB, EBS, EC2), then `terraform destroy`. **All data is lost** | ~20 min |
 
-```bash
-$(terraform output -raw configure_kubectl)
-kubectl -n argocd get applications -w
-```
-
-Everything converges in ~15–20 minutes after `apply` (EKS ~10 min, then ArgoCD waves).
+A re-created environment starts with empty databases and new secrets. Follow a
+deployment with `kubectl -n argocd get applications -w`.
 
 ## Access
 
@@ -68,24 +64,16 @@ curl https://litellm.<domain>/v1/chat/completions -H "Authorization: Bearer $KEY
   -d '{"model":"qwen3-0.6b","messages":[{"role":"user","content":"Hello"}]}'
 ```
 
-## Teardown
+## Cost (eu-west-1, estimates)
 
-```bash
-./scripts/teardown.sh
-```
+| Item | Awake, USD / month | Asleep, USD / month |
+|---|---|---|
+| EKS control plane | 73 | 73 |
+| ALB + its 3 public IPs | 31 | 31 |
+| NAT instance (t4g.nano) + public IP | 7 | 7 |
+| System node, r7g.large spot | 35 | 0 |
+| vLLM node, m7g.large spot | 28 | 0 |
+| EBS, Route53, Secrets Manager | 9 | 9 |
+| **Total** | **≈ 183** (0.25 USD/h) | **≈ 120** (4 USD/day) |
 
-## Cost (eu-west-1, always on, estimate)
-
-| Item | ~USD / month |
-|---|---|
-| EKS control plane | 73 |
-| NAT gateway (single) | 35 + traffic |
-| ALB | 20 |
-| System nodes, 2× t4g.medium spot | 26 |
-| General Karpenter node(s), Graviton spot | 25–40 |
-| Inference node, x86 2 vCPU / 8 GiB spot | 40 |
-| EBS, public IPv4, Route53, Secrets Manager | 30 |
-| **Total** | **≈ 250–270** (≈ 0.35 USD/h) |
-
-Biggest levers: destroy when idle, scale `gitops/apps/vllm` replicas to 0, replace
-the NAT gateway with a NAT instance.
+Example: awake 50 h/week, asleep otherwise ≈ 140 USD/month. Destroyed: 0.

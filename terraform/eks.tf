@@ -21,56 +21,88 @@ module "eks" {
   enabled_log_types                      = []
   cloudwatch_log_group_retention_in_days = 7
 
+  # No customer-managed KMS key (1 USD/month): EKS already envelope-encrypts
+  # Kubernetes secrets with an AWS-owned key.
+  encryption_config = null
+
+  # Single replicas: everything shares one system node anyway.
   addons = {
     vpc-cni = {
       addon_version  = "v1.22.4-eksbuild.3"
       before_compute = true
+      configuration_values = jsonencode({
+        env = {
+          # /28 prefixes per ENI slot: lifts the ENI-based pod limit
+          # (29 on a 2 vCPU node), needed to run the whole stack on one node.
+          ENABLE_PREFIX_DELEGATION = "true"
+          WARM_PREFIX_TARGET       = "1"
+        }
+      })
     }
     eks-pod-identity-agent = {
       addon_version  = "v1.3.10-eksbuild.3"
       before_compute = true
     }
     coredns = {
-      addon_version = "v1.14.7-eksbuild.11"
+      addon_version        = "v1.14.7-eksbuild.11"
+      configuration_values = jsonencode({ replicaCount = 1 })
     }
     kube-proxy = {
       addon_version = "v1.36.0-eksbuild.48"
     }
     aws-ebs-csi-driver = {
-      addon_version = "v1.67.0-eksbuild.1"
+      addon_version        = "v1.67.0-eksbuild.1"
+      configuration_values = jsonencode({ controller = { replicaCount = 1 } })
       pod_identity_association = [{
         role_arn        = module.aws_ebs_csi_driver_pod_identity.iam_role_arn
         service_account = "ebs-csi-controller-sa"
       }]
     }
     metrics-server = {
-      addon_version = "v0.9.0-eksbuild.13"
+      addon_version        = "v0.9.0-eksbuild.13"
+      configuration_values = jsonencode({ replicas = 1 })
     }
   }
 
-  # Small fixed node group for cluster-critical controllers. Everything else
-  # runs on Karpenter-provisioned nodes (see gitops/platform/karpenter).
+  # One node that runs Karpenter, ArgoCD, the platform controllers and the
+  # Langfuse/LiteLLM stack. Karpenter only adds nodes for vLLM ("inference")
+  # and for overflow ("general"). scripts/sleep.sh scales it to 0
+  # (desired_size is ignored by the module, so no drift).
   eks_managed_node_groups = {
     system = {
+      name            = local.system_node_group_name
+      use_name_prefix = false
+
       ami_type       = "AL2023_ARM_64_STANDARD"
       instance_types = var.system_node_instance_types
       capacity_type  = var.system_node_capacity_type
 
-      min_size     = 2
-      max_size     = 3
-      desired_size = 2
+      # Single AZ: the EBS volumes of Postgres/ClickHouse/Valkey stay next to
+      # the node across sleep/wake cycles.
+      subnet_ids = [module.vpc.private_subnets[0]]
+
+      min_size     = 0
+      max_size     = 2
+      desired_size = 1
 
       labels = {
         "karpenter.sh/controller" = "true"
       }
 
-      taints = {
-        critical_addons_only = {
-          key    = "CriticalAddonsOnly"
-          value  = "true"
-          effect = "NO_SCHEDULE"
-        }
-      }
+      # Prefix delegation (vpc-cni above) makes room for more pods than the
+      # ENI-based default; 110 is the EKS recommendation for < 30 vCPUs.
+      cloudinit_pre_nodeadm = [{
+        content_type = "application/node.eks.aws"
+        content      = <<-EOT
+          ---
+          apiVersion: node.eks.aws/v1alpha1
+          kind: NodeConfig
+          spec:
+            kubelet:
+              config:
+                maxPods: 110
+        EOT
+      }]
     }
   }
 
