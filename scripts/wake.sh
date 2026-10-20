@@ -10,6 +10,10 @@ wait_system_node_ready
 
 echo "==> Resuming ArgoCD auto-sync"
 argocd_autosync on bootstrap karpenter
+# Don't wait for the next poll (~3 min, longer while the repo-server starts):
+# restoring the NodePool limits is what brings the vLLM node back.
+kubectl -n argocd annotate applications.argoproj.io karpenter \
+  argocd.argoproj.io/refresh=hard --overwrite >/dev/null
 
 echo "==> Waiting for all applications to be Healthy (vLLM takes the longest)"
 kubectl -n argocd wait applications.argoproj.io --all \

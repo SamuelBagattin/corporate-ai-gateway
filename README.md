@@ -64,6 +64,16 @@ curl https://litellm.<domain>/v1/chat/completions -H "Authorization: Bearer $KEY
   -d '{"model":"qwen3-0.6b","messages":[{"role":"user","content":"Hello"}]}'
 ```
 
+Every call is traced in Langfuse (project "LiteLLM"). Langfuse v4 removed the v1
+read APIs (`/api/public/traces`); query the Observations API v2 instead:
+
+```bash
+S=$(aws secretsmanager get-secret-value --secret-id corporate-ai-gateway/litellm --query SecretString --output text)
+curl -s -u "$(jq -r .LANGFUSE_PUBLIC_KEY <<<"$S"):$(jq -r .LANGFUSE_SECRET_KEY <<<"$S")" \
+  "https://langfuse.<domain>/api/public/v2/observations?fromStartTime=$(date -u -v-1H +%FT%TZ)&toStartTime=$(date -u +%FT%TZ)" \
+  | jq '.data[] | {name, type, startTime}'
+```
+
 ## Cost (eu-west-1, estimates)
 
 | Item | Awake, USD / month | Asleep, USD / month |

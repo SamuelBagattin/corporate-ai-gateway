@@ -2,6 +2,12 @@
 
 Append-only log. Newest entries on top. Cap ~80 entries; archive older ones to `docs/journal-archive/YYYY-QN.md`.
 
+## 2026-10-20 — End-to-end verified: LiteLLM → vLLM → trace in Langfuse
+- **Did:** First real sleep/wake cycle (`sleep.sh` overnight, `wake.sh` this morning: all 13 apps healthy again). `wake.sh` now forces a refresh of the karpenter app; without it the NodePool limits only came back after ~6 min.
+- **Did:** Closed the "missing traces" issue: traces were ingested all along; the check used `/api/public/traces`, removed in Langfuse v4. Observations API v2 shows the generation with model, usage (21/7/28) and I/O. README documents the v2 query.
+- **Open:** Move the Cloudflare `ai-gateway` NS delegation into Terraform (Cloudflare provider + token) and drop the Route53 parent-zone record.
+- **Lessons:** Check API deprecations of the deployed major version before concluding data is missing.
+
 ## 2026-10-20 — First deploy: stack up, LiteLLM → vLLM works, Langfuse traces missing
 - **Did:** `terraform apply` (135 resources); all 13 ArgoCD apps Synced/Healthy. Chat completion through `https://litellm.ai-gateway.samuelbagattin.com` answered by vLLM. Cluster put to sleep overnight (`scripts/sleep.sh`).
 - **Did:** Fixes pushed to main: vLLM `--enforce-eager` (Inductor gcc segfault on arm64), KV cache 1 GiB + memory 6Gi/6912Mi, pinned vLLM v0.30.0 (v0.31/v0.32 crash on first request on CPU without Triton, fixed upstream by vllm#61992); Langfuse web/worker 2Gi + `NODE_OPTIONS=--max-old-space-size=1536`; ArgoCD ingress hostname set explicitly.
