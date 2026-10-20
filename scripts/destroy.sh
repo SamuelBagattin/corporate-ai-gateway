@@ -18,6 +18,10 @@ if [[ "$(system_nodes_desired)" == 0 ]]; then
 fi
 
 echo "==> Turning off ArgoCD auto-sync so nothing gets recreated"
+# bootstrap first: while it still auto-syncs, it restores the sync policy of
+# the child apps patched before it (it did re-arm "argocd", which recreated
+# its Ingress and the ALB).
+argocd_autosync off bootstrap
 for app in $(kubectl -n argocd get applications.argoproj.io -o name); do
   argocd_autosync off "${app#*/}"
 done

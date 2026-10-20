@@ -17,6 +17,6 @@ _TODO: who specifically uses this — fill in as the project evolves._
 - Cloudflare automation: the `ai-gateway` NS delegation in Cloudflare (the real DNS of the parent domain) stays manual.
 
 ## Status
-- **Phase:** POC deployed and verified end to end (2026-10-20)
+- **Phase:** POC verified end to end, then destroyed (2026-10-20). Recreate with `scripts/create.sh`.
 - **Started:** 2026-10-19
 - **Next milestone:** _TODO_ (v2: Amazon Bedrock backend)

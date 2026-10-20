@@ -2,6 +2,12 @@
 
 Append-only log. Newest entries on top. Cap ~80 entries; archive older ones to `docs/journal-archive/YYYY-QN.md`.
 
+## 2026-10-20 — Infrastructure destroyed
+- **Did:** Ran `scripts/destroy.sh` at the user's request. Terraform state is empty and no project resources are left in the account (checked EC2, EBS, ELB, VPC, EKS, Route53, ACM, Secrets Manager, S3, IAM, logs, SQS, EventBridge). Recreate with `scripts/create.sh`.
+- **Did:** Made the Route53 sub-zone `force_destroy`. Fixed `destroy.sh`: it turned auto-sync off alphabetically, so `bootstrap` re-armed `argocd`, which recreated its Ingress/ALB; the load balancer controller was then removed before cleaning up and left 2 security groups that blocked VPC deletion (deleted by hand, then `terraform destroy` finished).
+- **Open:** The 4 `ai-gateway` NS records in Cloudflare now point at a deleted Route53 zone; remove them (or update them after the next `create.sh`).
+- **Lessons:** Disable the app-of-apps' auto-sync before its children.
+
 ## 2026-10-20 — LiteLLM agents work with vLLM (empty tools, tool calling)
 - **Did:** Agent chat failed: the UI sends `tools: []`, which vLLM rejects (400). Added a LiteLLM pre-call hook (`gitops/apps/litellm/templates/custom-hooks.yaml`) that drops empty tools; enabled vLLM tool calling (`--enable-auto-tool-choice --tool-call-parser=hermes`). Verified both through the API.
 - **Open:** Remove the hook once LiteLLM omits empty tools itself (BerriAI/litellm#31522).
