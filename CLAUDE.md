@@ -20,4 +20,4 @@ The goal is to provide a reference architecture.
 - Before `/clear` or `/compact`, run the `project-memory` skill first.
 
 ## Out of scope (non-goals)
-_None defined yet._
+- Cloudflare automation: the `ai-gateway` NS delegation in Cloudflare (the real DNS of the parent domain) stays manual.

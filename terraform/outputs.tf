@@ -32,3 +32,8 @@ output "ops" {
     system_node_group = local.system_node_group_name
   }
 }
+
+output "delegation_name_servers" {
+  description = "NS records to set for <subdomain> at the parent domain's DNS provider (managed by hand)."
+  value       = aws_route53_zone.main.name_servers
+}

@@ -45,7 +45,9 @@ zone in the account, and this repository pushed to the URL in
 | `scripts/wake.sh` | Start of a work session | Starts the system node; ArgoCD restores Karpenter, which starts the vLLM node | ~10 min |
 | `scripts/destroy.sh` | Long break | Deletes controller-created AWS resources (ALB, EBS, EC2), then `terraform destroy`. **All data is lost** | ~20 min |
 
-A re-created environment starts with empty databases and new secrets. Follow a
+A re-created environment starts with empty databases and new secrets, and a new
+Route53 sub-zone: `create.sh` prints its name servers, to be set by hand as the
+`ai-gateway` NS records at the parent domain's DNS provider (Cloudflare here). Follow a
 deployment with `kubectl -n argocd get applications -w`.
 
 ## Access

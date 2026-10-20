@@ -12,3 +12,6 @@ load_outputs
 echo "Terraform done; ArgoCD is now deploying. Follow with:"
 echo "  kubectl -n argocd get applications -w"
 tf output urls
+echo "DNS: the parent domain's provider must delegate the sub-zone to these name servers"
+echo "(new ones after every re-create; update the NS records by hand):"
+tf output -json delegation_name_servers | jq -r '.[]'

@@ -14,9 +14,9 @@ _TODO: who specifically uses this — fill in as the project evolves._
 - Public HTTPS endpoints under `*.ai-gateway.samuelbagattin.com`.
 
 ## Scope — out (non-goals)
-_None defined yet._
+- Cloudflare automation: the `ai-gateway` NS delegation in Cloudflare (the real DNS of the parent domain) stays manual.
 
 ## Status
-- **Phase:** Implementation — code written and validated, not deployed
+- **Phase:** POC deployed and verified end to end (2026-10-20)
 - **Started:** 2026-10-19
-- **Next milestone:** First deploy + end-to-end chat completion through LiteLLM visible in Langfuse
+- **Next milestone:** _TODO_ (v2: Amazon Bedrock backend)
