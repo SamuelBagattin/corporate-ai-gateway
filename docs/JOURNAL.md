@@ -2,6 +2,10 @@
 
 Append-only log. Newest entries on top. Cap ~80 entries; archive older ones to `docs/journal-archive/YYYY-QN.md`.
 
+## 2026-10-20 — LiteLLM agents work with vLLM (empty tools, tool calling)
+- **Did:** Agent chat failed: the UI sends `tools: []`, which vLLM rejects (400). Added a LiteLLM pre-call hook (`gitops/apps/litellm/templates/custom-hooks.yaml`) that drops empty tools; enabled vLLM tool calling (`--enable-auto-tool-choice --tool-call-parser=hermes`). Verified both through the API.
+- **Open:** Remove the hook once LiteLLM omits empty tools itself (BerriAI/litellm#31522).
+
 ## 2026-10-20 — LiteLLM UI can save models and agents
 - **Did:** Agent builder failed with "failed to save agent": `/model/new` returned 500 because `STORE_MODEL_IN_DB` was off. Set `general_settings.store_model_in_db: true`; verified create/delete through the API.
 - **Decisions:** UI-created models/agents live in LiteLLM's Postgres; `model_list` in Git stays the baseline (see ARCHITECTURE.md).
