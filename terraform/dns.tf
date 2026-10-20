@@ -9,6 +9,9 @@ data "aws_route53_zone" "parent" {
 resource "aws_route53_zone" "main" {
   name    = local.domain
   comment = "EKS cluster ${var.cluster_name}. Managed by Terraform."
+
+  # external-dns records may still be there at destroy time.
+  force_destroy = true
 }
 
 resource "aws_route53_record" "delegation" {
