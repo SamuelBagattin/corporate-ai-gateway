@@ -1,0 +1,27 @@
+# Proxy hooks loaded by LiteLLM from the config directory (/etc/litellm), see
+# litellm_settings.callbacks in values.yaml.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-custom-hooks
+data:
+  drop_empty_tools.py: |
+    """Drop `tools: []` before it reaches the backend.
+
+    The admin UI agent builder sends an empty tools array when an agent has no
+    tools; vLLM (like OpenAI) rejects it with a 400. Remove once LiteLLM omits
+    empty tools itself (BerriAI/litellm#31522).
+    """
+    from litellm.integrations.custom_logger import CustomLogger
+
+
+    class DropEmptyTools(CustomLogger):
+        async def async_pre_call_hook(self, user_api_key_dict, cache, data, call_type):
+            if data.get("tools") == []:
+                data.pop("tools")
+                data.pop("tool_choice", None)
+                data.pop("parallel_tool_calls", None)
+            return data
+
+
+    proxy_handler_instance = DropEmptyTools()

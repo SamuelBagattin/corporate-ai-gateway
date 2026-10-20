@@ -31,6 +31,9 @@ models:
       # No torch.compile: on arm64 the Inductor C++ build hits a gcc internal
       # compiler error (segfault) during warm-up (seen on vLLM v0.32.0).
       - --enforce-eager
+      # OpenAI-style tool calling (LiteLLM agents); Qwen uses the hermes format.
+      - --enable-auto-tool-choice
+      - --tool-call-parser=hermes
     # Sized to fill a 2 vCPU / 8 GiB node (m7g.large spot, ~0.04 USD/h; ~6.9 GiB allocatable).
     resources:
       requests:

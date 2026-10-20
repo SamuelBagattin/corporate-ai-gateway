@@ -42,13 +42,26 @@ litellm-helm:
           model: hosted_vllm/qwen3-0.6b
           api_base: http://qwen3-0-6b.vllm.svc.cluster.local:8000/v1
     litellm_settings:
-      callbacks: ["langfuse_otel"]
+      callbacks:
+        - langfuse_otel
+        # templates/custom-hooks.yaml
+        - drop_empty_tools.proxy_handler_instance
       drop_params: true
     general_settings:
       master_key: os.environ/PROXY_MASTER_KEY
       # Lets the admin UI create models/agents, stored in Postgres (encrypted
       # with LITELLM_SALT_KEY). model_list above stays the Git-managed baseline.
       store_model_in_db: true
+
+  # Custom hooks next to config.yaml (LiteLLM resolves them from its directory).
+  volumes:
+    - name: custom-hooks
+      configMap:
+        name: litellm-custom-hooks
+  volumeMounts:
+    - name: custom-hooks
+      mountPath: /etc/litellm/drop_empty_tools.py
+      subPath: drop_empty_tools.py
 
   ingress:
     # hosts / ALB annotations injected by gitops/bootstrap.
