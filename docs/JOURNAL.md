@@ -2,6 +2,10 @@
 
 Append-only log. Newest entries on top. Cap ~80 entries; archive older ones to `docs/journal-archive/YYYY-QN.md`.
 
+## 2026-10-20 — LiteLLM UI can save models and agents
+- **Did:** Agent builder failed with "failed to save agent": `/model/new` returned 500 because `STORE_MODEL_IN_DB` was off. Set `general_settings.store_model_in_db: true`; verified create/delete through the API.
+- **Decisions:** UI-created models/agents live in LiteLLM's Postgres; `model_list` in Git stays the baseline (see ARCHITECTURE.md).
+
 ## 2026-10-20 — End-to-end verified: LiteLLM → vLLM → trace in Langfuse
 - **Did:** First real sleep/wake cycle (`sleep.sh` overnight, `wake.sh` this morning: all 13 apps healthy again). `wake.sh` now forces a refresh of the karpenter app; without it the NodePool limits only came back after ~6 min.
 - **Did:** Closed the "missing traces" issue: traces were ingested all along; the check used `/api/public/traces`, removed in Langfuse v4. Observations API v2 shows the generation with model, usage (21/7/28) and I/O. README documents the v2 query.
