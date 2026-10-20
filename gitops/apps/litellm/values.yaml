@@ -46,6 +46,9 @@ litellm-helm:
       drop_params: true
     general_settings:
       master_key: os.environ/PROXY_MASTER_KEY
+      # Lets the admin UI create models/agents, stored in Postgres (encrypted
+      # with LITELLM_SALT_KEY). model_list above stays the Git-managed baseline.
+      store_model_in_db: true
 
   ingress:
     # hosts / ALB annotations injected by gitops/bootstrap.
